@@ -1,0 +1,56 @@
+create database housing;
+
+use housing;
+
+drop table if exists t1;
+create table t1 as
+select PUBLIC_HOUSING_AGENCY_NAME as PHA_NAME,
+INSPECTION_DATE as MR_INSPECTION_DATE,
+COST_OF_INSPECTION_IN_DOLLARS as MR_INSPECTION_COST,
+lead(str_to_date(INSPECTION_DATE, '%m/%d/%Y')) over (partition by PUBLIC_HOUSING_AGENCY_NAME order by str_to_date(INSPECTION_DATE, '%m/%d/%Y')) as SECOND_MR_INSPECTION_DATE,
+lead(COST_OF_INSPECTION_IN_DOLLARS) over (partition by PUBLIC_HOUSING_AGENCY_NAME order by str_to_date(INSPECTION_DATE, '%m/%d/%Y')) as SECOND_MR_INSPECTION_COST
+from public_housing_inspection_data;
+
+
+drop table if exists t2;
+create table t2 as
+select PHA_NAME, MR_INSPECTION_DATE, MR_INSPECTION_COST, SECOND_MR_INSPECTION_DATE, SECOND_MR_INSPECTION_COST,
+MR_INSPECTION_COST-SECOND_MR_INSPECTION_COST as CHANGE_IN_COST
+from t1;
+
+
+drop table if exists t3;
+create table t3 as
+select PHA_NAME, MR_INSPECTION_DATE, MR_INSPECTION_COST, SECOND_MR_INSPECTION_DATE, SECOND_MR_INSPECTION_COST, CHANGE_IN_COST,
+concat(round((MR_INSPECTION_COST-SECOND_MR_INSPECTION_COST)/SECOND_MR_INSPECTION_COST*100,2),'%') as PERCENT_CHANGE_IN_COST
+from t2;
+
+
+drop table if exists t4;
+create table t4 as
+select PHA_NAME, MR_INSPECTION_DATE, MR_INSPECTION_COST, SECOND_MR_INSPECTION_DATE, SECOND_MR_INSPECTION_COST, CHANGE_IN_COST, PERCENT_CHANGE_IN_COST
+from t3
+where SECOND_MR_INSPECTION_DATE is not null
+and CHANGE_IN_COST > 0;
+
+
+drop table if exists t5;
+create table t5 as 
+select * 
+from (select distinct PHA_NAME, MR_INSPECTION_DATE, MR_INSPECTION_COST, SECOND_MR_INSPECTION_DATE, SECOND_MR_INSPECTION_COST, CHANGE_IN_COST, PERCENT_CHANGE_IN_COST from t4)a;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
